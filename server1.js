@@ -7,6 +7,8 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+const uri =''
+
 //  MongoDB connection string (your Atlas connection)
 
 const client = new MongoClient(uri, {
