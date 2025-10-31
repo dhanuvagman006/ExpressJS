@@ -1,72 +1,99 @@
 const express = require('express');
+const cors = require('cors');
+const { MongoClient, ObjectId, ServerApiVersion
+ } = require('mongodb');
+
 const app = express();
-const path = require('path');
+app.use(cors());
+app.use(express.json());
 
-app.use(express.static('public')); //Add This
-   
+const uri=""
+
+ const path = require('path');
+app.use(express.static('public'));
+
 app.get('/', (req, res) => {
-  res.send('Hello Dhanush!');
-});
-
-
-app.get('/index', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
-
-app.get('/home', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'home.html'));
+//Till here
+const client = new MongoClient(uri, {
+  serverApi: {
+    version: ServerApiVersion.v1,
+    strict: true,
+    deprecationErrors: true
+  }
 });
+let users;
 
-app.get('/about', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'about.html'));
-});
+async function connectDB() {
+  try {
+    await client.connect();
+    const db = client.db("Dhanush");
+    users = db.collection("Users");
+    console.log(" MongoDB Connected Successfully");
+  } catch (err) {
+    console.error(" DB Connection Error:", err);
+  }
+}
+connectDB();
 
-app.get('/dish', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'dish.html'));
-});
 
-app.get('/api/dish',(req,res)=>{
-  res.json({
-    dishes: [
-      {
-        id: 1,
-        name: 'Spaghetti Carbonara',
-        cuisine: 'Italian',
-        price: 15.99,
-        ingredients: ['pasta', 'eggs', 'bacon', 'parmesan', 'black pepper']
-      },
-      {
-        id: 2,
-        name: 'Chicken Tikka Masala',
-        cuisine: 'Indian',
-        price: 18.50,
-        ingredients: ['chicken', 'tomatoes', 'cream', 'spices', 'rice']
-      },
-      {
-        id: 3,
-        name: 'Beef Tacos',
-        cuisine: 'Mexican',
-        price: 12.75,
-        ingredients: ['ground beef', 'tortillas', 'lettuce', 'cheese', 'salsa']
-      },
-      {
-        id: 4,
-        name: 'Pad Thai',
-        cuisine: 'Thai',
-        price: 14.25,
-        ingredients: ['rice noodles', 'shrimp', 'tofu', 'bean sprouts', 'peanuts']
-      }
-    ],
-    total: 4
-  });
-})
 
-app.use((req, res) => {
-  res.status(404).send('404 - Page Not Found ');
+app.post('/users', async (req, res) => {
+  try {
+    console.log(" Received data:", req.body); // Debugging line
+    if (!req.body || Object.keys(req.body).length === 0) {
+      return res.status(400).json({ error: "Empty request body" });
+    }
+    const result = await users.insertOne(req.body);
+    res.status(201).json({ message: "User added", result });
+  } catch (err) {
+    console.error(" Insert Error:", err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 
-
-app.listen(3000, () => {
-console.log('Server running on http://localhost:3000');
+app.get('/users', async (req, res) => {
+  try {
+    const data = await users.find().toArray();
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
+
+app.get('/users/:id', async (req, res) => {
+  try {
+    const data = await users.findOne({ _id: new ObjectId(req.params.id) });
+    if (!data) return res.status(404).json({ message: "User not found" });
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+// Update
+app.put('/users/:id', async (req, res) => {
+  try {
+    const result = await users.updateOne(
+      { _id: new ObjectId(req.params.id) },
+      { $set: req.body }
+    );
+    res.json({ message: "User updated", result });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+// Delete
+app.delete('/users/:id', async (req, res) => {
+  try {
+    const result = await users.deleteOne({ _id: new ObjectId(req.params.id) });
+    res.json({ message: "User deleted", result });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+//  Start server
+app.listen(5000, () => console.log(" Server running on port http://localhost:5000"));
